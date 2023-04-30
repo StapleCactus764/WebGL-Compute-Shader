@@ -4,13 +4,60 @@ class ComputeShaderError extends Error {
         this.name = 'ComputeShaderError';
     }
 }
+class ComputeShaderInput {
+    constructor(location, data, width, height, type = 'RGBA') {
+        if (location === 'length') throw new ComputeShaderError(`The input name 'length' is a reserved name.`);
+
+        const tex = ComputeShader.gl.createTexture();
+        ComputeShader.gl.bindTexture(ComputeShader.gl.TEXTURE_2D, tex);
+        ComputeShader.gl.texImage2D(ComputeShader.gl.TEXTURE_2D, 0, ComputeShader.gl[type], width, height, 0, ComputeShader.gl[type], ComputeShader.gl.FLOAT, data);
+
+        ComputeShader.gl.texParameteri(ComputeShader.gl.TEXTURE_2D, ComputeShader.gl.TEXTURE_MIN_FILTER, ComputeShader.gl.NEAREST);
+        ComputeShader.gl.texParameteri(ComputeShader.gl.TEXTURE_2D, ComputeShader.gl.TEXTURE_MAG_FILTER, ComputeShader.gl.NEAREST);
+        ComputeShader.gl.texParameteri(ComputeShader.gl.TEXTURE_2D, ComputeShader.gl.TEXTURE_WRAP_S, ComputeShader.gl.CLAMP_TO_EDGE);
+        ComputeShader.gl.texParameteri(ComputeShader.gl.TEXTURE_2D, ComputeShader.gl.TEXTURE_WRAP_T, ComputeShader.gl.CLAMP_TO_EDGE);
+
+        this.id = null;
+        this.texture = tex;
+        this.type = type;
+        this.locationName = location;
+        this.location = null;
+        this.dimensionsLocation = null;
+        this.width = width;
+        this.height = height;
+        this.frameBuffer = ComputeShader.gl.createFramebuffer();
+
+        ComputeShader.gl.bindFramebuffer(ComputeShader.gl.FRAMEBUFFER, this.frameBuffer);
+        ComputeShader.gl.framebufferTexture2D(ComputeShader.gl.FRAMEBUFFER, ComputeShader.gl.COLOR_ATTACHMENT0, ComputeShader.gl.TEXTURE_2D, this.texture, 0);
+        ComputeShader.gl.viewport(0, 0, width, height);
+    }
+}
+class ComputeShaderOutput {
+    constructor(width, height, type) {
+        this.frameBuffer = ComputeShader.gl.createFramebuffer();
+        this.texture = ComputeShader.gl.createTexture();
+        this.width = width;
+        this.height = height;
+        this.type = 'RGBA';
+    }
+}
+class ComputeShaderContext {
+    constructor(powerPreference) {
+        this.canvas = document.createElement('canvas');
+        this.context = this.canvas.getContext('webgl', powerPreference ? {powerPreference: 'high-performance'} : {});
+    }
+    resize(width, height) {
+        this.canvas.width = width;
+        this.canvas.height = height;
+    }
+}
 class ComputeShader {
     constructor(source, width, height) {
-        if (!ComputeShader.#gl) throw new ComputeShaderError(`Attempted to create a compute shader without a WebGL context`);
+        if (!ComputeShader.gl) throw new ComputeShaderError(`Attempted to create a compute shader without a WebGL context`);
         if (+width <= 0) throw new ComputeShaderError(`Attempted to create a compute shader without a width`);
         if (+height <= 0) throw new ComputeShaderError(`Attempted to create a compute shader without a height`);
 
-        this.gl = ComputeShader.#gl;
+        this.gl = ComputeShader.gl;
         this.width = width;
         this.height = height;
 
@@ -42,13 +89,7 @@ class ComputeShader {
         this.uniformsInfo = {};
         this.attributes = [];
         
-        this.output = {
-            frameBuffer: this.gl.createFramebuffer(),
-            texture: this.gl.createTexture(),
-            width: width,
-            height: height,
-            type: 'RGBA',
-        };
+        this.output = new ComputeShaderOutput(this.width, this.height, 'RGBA');
         this.gl.bindTexture(this.gl.TEXTURE_2D, this.output.texture);
         this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.width, this.height, 0, this.gl.RGBA, this.gl.FLOAT, new Float32Array(this.width * this.height * 4));
         
@@ -68,6 +109,8 @@ class ComputeShader {
         this.gl.viewport(0, 0, this.width, this.height);
     }
     run() {
+        if (this.inputs.length > this.gl.getParameter(this.gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS)) throw new ComputeShaderError('WebGL cannot support the current number of inputs.');
+
         for (const i in this.inputs) {
             const input = this.inputs[i];
             if (!input || i === 'length') continue;
@@ -95,7 +138,7 @@ class ComputeShader {
         this.inputInfo[input.locationName] = inputInfo;
         inputInfo.id = this.ids.length ? this.ids.pop() : this.textureId ++;
         inputInfo.location = this.gl.getUniformLocation(this.program, input.locationName),
-        inputInfo.dimensionsLocation = this.gl.getUniformLocation(this.program, input.locationName + 'Dimensions'),
+        inputInfo.dimensionsLocation = this.gl.getUniformLocation(this.program, input.locationName + 'Dim'),
 
         this.inputs[input.locationName] = input;
         this.inputs.length ++;
@@ -179,39 +222,10 @@ class ComputeShader {
 
         return program;
     }
-    
-    static createInput = (location, data, width, height, type = 'RGBA') => {
-        if (location === 'length') throw new ComputeShaderError(`The input name 'length' is a reserved name.`);
 
-        const tex = ComputeShader.#gl.createTexture();
-        ComputeShader.#gl.bindTexture(ComputeShader.#gl.TEXTURE_2D, tex);
-        ComputeShader.#gl.texImage2D(ComputeShader.#gl.TEXTURE_2D, 0, ComputeShader.#gl[type], width, height, 0, ComputeShader.#gl[type], ComputeShader.#gl.FLOAT, data);
-        
-        ComputeShader.#gl.texParameteri(ComputeShader.#gl.TEXTURE_2D, ComputeShader.#gl.TEXTURE_MIN_FILTER, ComputeShader.#gl.NEAREST);
-        ComputeShader.#gl.texParameteri(ComputeShader.#gl.TEXTURE_2D, ComputeShader.#gl.TEXTURE_MAG_FILTER, ComputeShader.#gl.NEAREST);
-        ComputeShader.#gl.texParameteri(ComputeShader.#gl.TEXTURE_2D, ComputeShader.#gl.TEXTURE_WRAP_S, ComputeShader.#gl.CLAMP_TO_EDGE);
-        ComputeShader.#gl.texParameteri(ComputeShader.#gl.TEXTURE_2D, ComputeShader.#gl.TEXTURE_WRAP_T, ComputeShader.#gl.CLAMP_TO_EDGE);
-        
-        const input = {
-            id: null,
-            texture: tex,
-            type: type,
-            locationName: location,
-            location: null,
-            dimensionsLocation: null,
-            width: width,
-            height: height,
-            frameBuffer: ComputeShader.#gl.createFramebuffer(),
-        };
-        ComputeShader.#gl.bindFramebuffer(ComputeShader.#gl.FRAMEBUFFER, input.frameBuffer);
-        ComputeShader.#gl.framebufferTexture2D(ComputeShader.#gl.FRAMEBUFFER, ComputeShader.#gl.COLOR_ATTACHMENT0, ComputeShader.#gl.TEXTURE_2D, input.texture, 0);
-        ComputeShader.#gl.viewport(0, 0, width, height);
-
-        return input;
-    };
     static updateInput(input, data) {
-        ComputeShader.#gl.bindTexture(ComputeShader.#gl.TEXTURE_2D, input.texture);
-        ComputeShader.#gl.texImage2D(ComputeShader.#gl.TEXTURE_2D, 0, ComputeShader.#gl[input.type], input.width, input.height, 0, ComputeShader.#gl[input.type], ComputeShader.#gl.FLOAT, data);
+        ComputeShader.gl.bindTexture(ComputeShader.gl.TEXTURE_2D, input.texture);
+        ComputeShader.gl.texImage2D(ComputeShader.gl.TEXTURE_2D, 0, ComputeShader.gl[input.type], input.width, input.height, 0, ComputeShader.gl[input.type], ComputeShader.gl.FLOAT, data);
     }
     static createUniform(location, type, data) {
         const uniform = {
@@ -226,12 +240,12 @@ class ComputeShader {
         uniform.data = data;
     }
     static readInput(input, result = new Float32Array(input.width * input.height * 4)) {
-        ComputeShader.#gl.bindFramebuffer(ComputeShader.#gl.FRAMEBUFFER, input.frameBuffer);
-        ComputeShader.#gl.readPixels(0, 0, input.width, input.height, ComputeShader.#gl.RGBA, ComputeShader.#gl.FLOAT, result);
+        ComputeShader.gl.bindFramebuffer(ComputeShader.gl.FRAMEBUFFER, input.frameBuffer);
+        ComputeShader.gl.readPixels(0, 0, input.width, input.height, ComputeShader.gl.RGBA, ComputeShader.gl.FLOAT, result);
         return result;
     }
-    static swapTextures(input, input2) {
-        if (!input || !input2) throw new ComputeShaderError('swapTextures requires two inputs.');
+    static swap(input, input2) {
+        if (!input || !input2) throw new ComputeShaderError('swap requires two inputs.');
 
         const tempTex = input2.texture,
             tempFB = input2.frameBuffer;
@@ -241,16 +255,12 @@ class ComputeShader {
         input.frameBuffer = tempFB;
     }
 
-    static createContext = () => {
-        const canvas = document.createElement('canvas', {powerPreference: 'high-performance'});
-        return [canvas, canvas.getContext('webgl')];
-    };
-    static useContext = gl => {
-        if (!gl.getExtension('OES_texture_float')) throw new ComputeShaderError(`Cannot get extention 'OES_texture_float'`);
-        if (!gl.getExtension("OES_texture_float_linear")) throw new ComputeShaderError(`Cannot get extention 'OES_texture_float_linear'`);
-        if (!gl.getExtension('WEBGL_color_buffer_float')) throw new ComputeShaderError(`Cannot get extention 'WEBGL_color_buffer_float'. Most smartphones do not support this, try switching to another device?`);
+    static useContext = context => {
+        if (!context.context.getExtension('OES_texture_float')) throw new ComputeShaderError(`Cannot get extention 'OES_texture_float'`);
+        if (!context.context.getExtension("OES_texture_float_linear")) throw new ComputeShaderError(`Cannot get extention 'OES_texture_float_linear'`);
+        if (!context.context.getExtension('WEBGL_color_buffer_float')) throw new ComputeShaderError(`Cannot get extention 'WEBGL_color_buffer_float'. Most smartphones do not support this, try switching to another device?`);
         
-        ComputeShader.#gl = gl;
+        ComputeShader.gl = context.context;
     }
-    static #gl = null;
+    static gl = null;
 }
