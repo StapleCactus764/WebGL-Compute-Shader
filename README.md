@@ -23,7 +23,7 @@ If necessary, a shader can be told to render to the canvas rather than write to 
 **Limits:**  
 This library currently only supports WebGL 1 and uses three extensions: OES_texture_float, OES_texture_float_linear, and WEBGL_color_buffer_float. Some devices do not support these.
 
-# Demo
+## Demo
 This demo takes a list of numbers, multiplies them by 2 and then subtracts 3. This would normally take close to 100 lines of vanilla WebGL code. 
 ```javascript
 const cgl = new ComputeShaderContext(); // Creates a new context
