@@ -4,6 +4,13 @@ class ComputeShaderError extends Error {
         this.name = 'ComputeShaderError';
     }
 }
+class ComputeShaderUniform {
+    constructor(location, type, data) {
+        this.locationName = location;
+        this.type = type;
+        this.data = data;
+    }
+}
 class ComputeShaderInput {
     constructor(location, data, width, height, type = 'RGBA') {
         if (location === 'length') throw new ComputeShaderError(`The input name 'length' is a reserved name.`);
@@ -226,15 +233,6 @@ class ComputeShader {
     static updateInput(input, data) {
         ComputeShader.gl.bindTexture(ComputeShader.gl.TEXTURE_2D, input.texture);
         ComputeShader.gl.texImage2D(ComputeShader.gl.TEXTURE_2D, 0, ComputeShader.gl[input.type], input.width, input.height, 0, ComputeShader.gl[input.type], ComputeShader.gl.FLOAT, data);
-    }
-    static createUniform(location, type, data) {
-        const uniform = {
-            locationName: location,
-            type: type,
-            data: data,
-        };
-
-        return uniform;
     }
     static updateUniform(uniform, data) {
         uniform.data = data;
