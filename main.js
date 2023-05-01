@@ -10,6 +10,9 @@ class ComputeShaderUniform {
         this.type = type;
         this.data = data;
     }
+    update(data) {
+        uniform.data = data;
+    }
 }
 class ComputeShaderInput {
     constructor(location, data, width, height, type = 'RGBA') {
@@ -38,6 +41,15 @@ class ComputeShaderInput {
         ComputeShader.gl.framebufferTexture2D(ComputeShader.gl.FRAMEBUFFER, ComputeShader.gl.COLOR_ATTACHMENT0, ComputeShader.gl.TEXTURE_2D, this.texture, 0);
         ComputeShader.gl.viewport(0, 0, width, height);
     }
+    update(data) {
+        ComputeShader.gl.bindTexture(ComputeShader.gl.TEXTURE_2D, this.texture);
+        ComputeShader.gl.texImage2D(ComputeShader.gl.TEXTURE_2D, 0, ComputeShader.gl[this.type], this.width, this.height, 0, ComputeShader.gl[input.type], ComputeShader.gl.FLOAT, data);
+    }
+    read(result = new Float32Array(this.width * this.height * 4)) {
+        ComputeShader.gl.bindFramebuffer(ComputeShader.gl.FRAMEBUFFER, this.frameBuffer);
+        ComputeShader.gl.readPixels(0, 0, this.width, this.height, ComputeShader.gl.RGBA, ComputeShader.gl.FLOAT, result);
+        return result;
+    }
 }
 class ComputeShaderOutput {
     constructor(width, height, type) {
@@ -46,6 +58,11 @@ class ComputeShaderOutput {
         this.width = width;
         this.height = height;
         this.type = 'RGBA';
+    }
+    read(result = new Float32Array(this.width * this.height * 4)) {
+        ComputeShader.gl.bindFramebuffer(ComputeShader.gl.FRAMEBUFFER, this.frameBuffer);
+        ComputeShader.gl.readPixels(0, 0, this.width, this.height, ComputeShader.gl.RGBA, ComputeShader.gl.FLOAT, result);
+        return result;
     }
 }
 class ComputeShaderContext {
@@ -131,10 +148,6 @@ class ComputeShader {
     read(result = new Float32Array(this.width * this.height * 4)) {
         this.gl.readPixels(0, 0, this.width, this.height, this.gl.RGBA, this.gl.FLOAT, result)
         return result;
-    }
-    clear() {
-        this.gl.clearColor(0, 0, 0, 1);
-        this.gl.clear(this.gl.COLOR_BUFFER_BIT);
     }
     
     addInput(input) {
@@ -230,17 +243,9 @@ class ComputeShader {
         return program;
     }
 
-    static updateInput(input, data) {
-        ComputeShader.gl.bindTexture(ComputeShader.gl.TEXTURE_2D, input.texture);
-        ComputeShader.gl.texImage2D(ComputeShader.gl.TEXTURE_2D, 0, ComputeShader.gl[input.type], input.width, input.height, 0, ComputeShader.gl[input.type], ComputeShader.gl.FLOAT, data);
-    }
-    static updateUniform(uniform, data) {
-        uniform.data = data;
-    }
-    static readInput(input, result = new Float32Array(input.width * input.height * 4)) {
-        ComputeShader.gl.bindFramebuffer(ComputeShader.gl.FRAMEBUFFER, input.frameBuffer);
-        ComputeShader.gl.readPixels(0, 0, input.width, input.height, ComputeShader.gl.RGBA, ComputeShader.gl.FLOAT, result);
-        return result;
+    static clear() {
+        ComputeShader.gl.clearColor(0, 0, 0, 1);
+        ComputeShader.gl.clear(ComputeShader.gl.COLOR_BUFFER_BIT);
     }
     static swap(input, input2) {
         if (!input || !input2) throw new ComputeShaderError('swap requires two inputs.');
