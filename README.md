@@ -1,6 +1,9 @@
 # WebGL Compute Shaders
 A library for running compute shaders on the web with WebGL.
 
+JSDelivr link:
+https://cdn.jsdelivr.net/gh/staplecactus764/webgl-compute-shader@v1.0.3/main.js
+
 ## Main Ideas
 **Contexts:**  
 A context is the base for a compute shader. All compute shaders that share the same context can directly share information with each other. There is no default context, so a context has to be set before progressing. When a compute shader element (uniform, input, a shader) is created, it is assigned to the current context. No work should be done on that element if the current context is not its own context.
