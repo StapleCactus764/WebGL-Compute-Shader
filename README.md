@@ -49,7 +49,7 @@ const data = new Float32Array(20 * 20 * 4);
 for (let i = 0; i < data.length; i ++) data[i] = i;
 
 const input = new ComputeShaderInput('num', data, 20, 20); // Creates an input
-const offset = new ComputeShaderUniform('offset', -3, '1f'); // Creates an output that is -3 as a float
+const offset = new ComputeShaderUniform('offset', -3, '1f'); // Creates a uniform that is -3 as a float
 
 const cs = new ComputeShader(shaderSource, 20, 20); // Creates a new shader
 
