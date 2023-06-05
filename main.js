@@ -11,7 +11,7 @@ class ComputeShaderUniform {
         this.data = data;
     }
     update(data) {
-        uniform.data = data;
+        this.data = data;
     }
 }
 class ComputeShaderInput {
