@@ -43,7 +43,7 @@ class ComputeShaderInput {
     }
     update(data) {
         ComputeShader.gl.bindTexture(ComputeShader.gl.TEXTURE_2D, this.texture);
-        ComputeShader.gl.texImage2D(ComputeShader.gl.TEXTURE_2D, 0, ComputeShader.gl[this.type], this.width, this.height, 0, ComputeShader.gl[input.type], ComputeShader.gl.FLOAT, data);
+        ComputeShader.gl.texImage2D(ComputeShader.gl.TEXTURE_2D, 0, ComputeShader.gl[this.type], this.width, this.height, 0, ComputeShader.gl[this.type], ComputeShader.gl.FLOAT, data);
     }
     read(result = new Float32Array(this.width * this.height * 4)) {
         ComputeShader.gl.bindFramebuffer(ComputeShader.gl.FRAMEBUFFER, this.frameBuffer);
